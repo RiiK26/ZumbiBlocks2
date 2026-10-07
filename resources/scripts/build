@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -e
+
+# Navigate to the root directory (based on script location)
+cd "$(dirname "$0")/../.."
+
+show_help() {
+    echo "================================================="
+    echo " Mod Build Script (MinGW Cross-Compile)"
+    echo "================================================="
+    echo "Usage: $(basename "$0") [options]"
+    echo ""
+    echo "Options:"
+    echo "  --release     Build Release version (Default, optimized)"
+    echo "  --debug       Build Debug version (For debugging with symbols)"
+    echo "  --clean       Remove the 'build' directory before compiling"
+    echo "  --help, -h    Show this help message"
+    echo "================================================="
+}
+
+# Default values
+BUILD_TYPE="Release"
+CLEAN_BUILD=0
+
+# Parse command-line arguments
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        --release)
+            BUILD_TYPE="Release"
+            ;;
+        --debug)
+            BUILD_TYPE="Debug"
+            ;;
+        --clean)
+            CLEAN_BUILD=1
+            ;;
+        *)
+            echo "[!] Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+# Clean build directory if --clean is passed
+if [ "$CLEAN_BUILD" -eq 1 ]; then
+    echo "[*] Removing build directory..."
+    rm -rf build
+fi
+
+echo "[*] Building Mod ($BUILD_TYPE) via MinGW cross-compiler..."
+
+# Configuration stage
+cmake -B build \
+      -Wno-unused-cli \
+      -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+      -G "Unix Makefiles"
+
+# Compilation stage
+cmake --build build -j$(nproc)
+
+# Convert BUILD_TYPE to lowercase for the output path (debug / release)
+DIR_NAME=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+
+echo "================================================="
+echo "[+] Build complete! Target located at: build/${DIR_NAME}/ZumbiBlocks2.dll"
+echo "================================================="

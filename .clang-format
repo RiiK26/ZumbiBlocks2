@@ -1,0 +1,79 @@
+AccessModifierOffset: -2
+AlignAfterOpenBracket: BlockIndent
+AlignArrayOfStructures: Left
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+  AlignFunctionDeclarations: false
+
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+
+AlignEscapedNewlines: DontAlign
+AlignOperands: AlignAfterOperator
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 1
+
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: Never
+
+BreakTemplateDeclarations: Yes
+BasedOnStyle: WebKit
+BitFieldColonSpacing: After
+BinPackParameters: false
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+  AfterClass: true
+  AfterStruct: true
+  AfterControlStatement: false
+  BeforeElse: true
+  AfterEnum: true
+  AfterNamespace: true
+
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: AfterColon
+BreakStringLiterals: true
+
+ColumnLimit: 120
+ContinuationIndentWidth: 2
+Cpp11BracedListStyle: true
+CompactNamespaces: true
+
+FixNamespaceComments: true
+
+IncludeBlocks: Regroup
+IndentGotoLabels: false
+IndentPPDirectives: BeforeHash
+IndentWidth: 2
+
+MaxEmptyLinesToKeep: 2
+
+NamespaceIndentation: All
+
+PackConstructorInitializers: Never
+PointerAlignment: Left
+
+ReflowComments: false
+
+SortIncludes: Never
+SortUsingDeclarations: Never
+SpaceAfterCStyleCast: true
+SpaceAfterTemplateKeyword: false
+SpaceBeforeCaseColon: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeInheritanceColon: false
+SpaceInEmptyBlock: false
+SpacesBeforeTrailingComments: 2
