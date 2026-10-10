@@ -24,4 +24,9 @@ namespace Mono
   // Helper function to resolve a method and compile it to a native pointer
   extern void* CompileMethod(const char* name_space, const char* class_name, const char* method_name, int param_count);
 
+  // Field Helpers
+  extern MonoField* GetFieldFromName(const char* name_space, const char* class_name, const char* field_name);
+  extern void GetFieldValue(MonoObject* obj, MonoField* field, void* value);
+  extern void SetFieldValue(MonoObject* obj, MonoField* field, void* value);
+
 }  // namespace Mono

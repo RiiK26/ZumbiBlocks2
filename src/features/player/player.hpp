@@ -4,7 +4,9 @@ namespace Features
 {
   namespace Player
   {
-    void Initialize();
-    void Uninitialize();
+    void InitializeInvicible();
+    void InitializeStamina();
+
+    void UninitializeInvicible();
   }  // namespace Player
 }  // namespace Features

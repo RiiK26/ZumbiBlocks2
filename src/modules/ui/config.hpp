@@ -5,8 +5,13 @@ namespace UI
 {
   struct ConfigData
   {
-    bool bMenuOpen   = true;
-    bool bInvincible = false;
+    bool bMenuOpen        = true;
+    bool bInvincible      = false;
+    bool bInfiniteStamina = false;
+    bool bOneHitKill      = false;
+    bool bInfiniteAmmo    = false;
+    bool bCrosshair       = false;
+    bool bDotCrosshair    = false;
     // Add specific settings below here
 
     void LoadConfig();

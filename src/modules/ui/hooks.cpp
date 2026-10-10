@@ -59,6 +59,8 @@ namespace UI
   ID3D12Resource*            g_mainRenderTargetResource[16] = {};
   UINT                       g_NUM_FRAMES_IN_FLIGHT         = 16;
 
+  void ResetImGui();
+
   // Render Target Management
   void CleanupRenderTargetDX12()
   {
@@ -74,11 +76,12 @@ namespace UI
   {
     for (UINT i = 0; i < g_NUM_FRAMES_IN_FLIGHT; i++) {
       ID3D12Resource* pBackBuffer = nullptr;
-      pSwapChain->GetBuffer(i, __uuidof(ID3D12Resource), (void**) &pBackBuffer);
-      D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_pd3dRtvDescHeap->GetCPUDescriptorHandleForHeapStart();
-      rtvHandle.ptr += i * pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-      pDevice->CreateRenderTargetView(pBackBuffer, nullptr, rtvHandle);
-      g_mainRenderTargetResource[i] = pBackBuffer;
+      if (SUCCEEDED(pSwapChain->GetBuffer(i, __uuidof(ID3D12Resource), (void**) &pBackBuffer))) {
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_pd3dRtvDescHeap->GetCPUDescriptorHandleForHeapStart();
+        rtvHandle.ptr += i * pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        pDevice->CreateRenderTargetView(pBackBuffer, nullptr, rtvHandle);
+        g_mainRenderTargetResource[i] = pBackBuffer;
+      }
     }
   }
 
@@ -92,10 +95,11 @@ namespace UI
 
   void CreateRenderTarget(IDXGISwapChain* pSwapChain)
   {
-    ID3D11Texture2D* pBackBuffer;
-    pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*) &pBackBuffer);
-    pDevice->CreateRenderTargetView(pBackBuffer, NULL, &mainRenderTargetView);
-    pBackBuffer->Release();
+    ID3D11Texture2D* pBackBuffer = nullptr;
+    if (SUCCEEDED(pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*) &pBackBuffer))) {
+      pDevice->CreateRenderTargetView(pBackBuffer, NULL, &mainRenderTargetView);
+      pBackBuffer->Release();
+    }
   }
 
   // Window Procedure Hook
@@ -381,8 +385,18 @@ namespace UI
     return oExecuteCommandLists(queue, NumCommandLists, ppCommandLists);
   }
 
+  static IDXGISwapChain* currentSwapChain = nullptr;
+
   void RenderFrame(IDXGISwapChain* pSwapChain)
   {
+    if (currentSwapChain != pSwapChain) {
+      if (init || initDX12) {
+        Logger::Log("[DX] SwapChain changed. Shutting down ImGui to re-initialize.");
+        ResetImGui();
+      }
+      currentSwapChain = pSwapChain;
+    }
+
     ID3D11Device* pD11 = nullptr;
     if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**) &pD11))) {
       static bool logD11 = false;
@@ -406,7 +420,7 @@ namespace UI
       if (!g_pd3dCommandQueue) {
         static bool logNoQ = false;
         if (!logNoQ) {
-          Logger::Log("[DX12] ERROR: g_pd3dCommandQueue is null. Waiting for ExecuteCommandLists...");
+          // Wait for ExecuteCommandLists to discover the queue
           logNoQ = true;
         }
       }
@@ -580,14 +594,12 @@ namespace UI
     UnregisterClassA("DummyClass", wc.hInstance);
   }
 
-  void Shutdown()
+  void ResetImGui()
   {
     if (window && oWndProc) {
       SetWindowLongPtr(window, GWLP_WNDPROC, (LONG_PTR) oWndProc);
       oWndProc = nullptr;
     }
-
-    MH_DisableHook(MH_ALL_HOOKS);
 
     if (init || initDX12) {
       if (initDX12)
@@ -624,5 +636,11 @@ namespace UI
 
     init     = false;
     initDX12 = false;
+  }
+
+  void Shutdown()
+  {
+    ResetImGui();
+    MH_DisableHook(MH_ALL_HOOKS);
   }
 }  // namespace UI

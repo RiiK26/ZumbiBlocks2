@@ -2,6 +2,7 @@
 
 #include "../../features/anticheat/anticheat.hpp"
 #include "../../features/player/player.hpp"
+#include "../../features/combat/combat.hpp"
 
 #include <MinHook.h>
 
@@ -14,13 +15,15 @@ void Hooks::Initialize()
     Hooks::bHooksFailed = true;
   }
 
-  Features::Player::Initialize();
+  Features::Player::InitializeInvicible();
+  Features::Player::InitializeStamina();
+  Features::Combat::Initialize();
+  Features::Combat::InitializeAmmo();
 }
 
 void Hooks::Uninitialize()
 {
-
-
+  Features::Combat::Uninitialize();
   MH_DisableHook(MH_ALL_HOOKS);
   MH_Uninitialize();
 }

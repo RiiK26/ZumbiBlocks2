@@ -191,4 +191,75 @@ namespace Mono
     Logger::Log("[Mono] mono_compile_method is null");
     return nullptr;
   }
+
+  MonoField* GetFieldFromName(const char* name_space, const char* class_name, const char* field_name)
+  {
+    if (
+      !mono_get_root_domain || !mono_domain_assembly_open || !mono_assembly_get_image || !mono_class_get_field_from_name
+    )
+      return nullptr;
+
+    MonoDomain* domain = mono_get_root_domain();
+    if (!domain)
+      return nullptr;
+
+    MonoAssembly* assembly = nullptr;
+    if (mono_assembly_foreach && mono_assembly_get_name && mono_assembly_name_get_name) {
+      struct SearchData
+      {
+        const char*   targetName;
+        MonoAssembly* foundAssembly;
+      } searchData = {"Assembly-CSharp", nullptr};
+
+      mono_assembly_foreach(
+        [](MonoAssembly* assem, void* user_data) {
+          SearchData* data = (SearchData*) user_data;
+          if (data->foundAssembly)
+            return;
+          struct MonoAssemblyName* aname = mono_assembly_get_name(assem);
+          if (aname) {
+            const char* name = mono_assembly_name_get_name(aname);
+            if (name && strcmp(name, data->targetName) == 0) {
+              data->foundAssembly = assem;
+            }
+          }
+        },
+        &searchData
+      );
+      assembly = searchData.foundAssembly;
+    }
+
+    if (!assembly) {
+      assembly = mono_domain_assembly_open(domain, "Assembly-CSharp.dll");
+      if (!assembly)
+        assembly = mono_domain_assembly_open(domain, "Assembly-CSharp");
+    }
+
+    if (!assembly)
+      return nullptr;
+
+    MonoImage* image = mono_assembly_get_image(assembly);
+    if (!image)
+      return nullptr;
+
+    MonoClass* klass = mono_class_from_name(image, name_space, class_name);
+    if (!klass)
+      return nullptr;
+
+    return mono_class_get_field_from_name(klass, field_name);
+  }
+
+  void GetFieldValue(MonoObject* obj, MonoField* field, void* value)
+  {
+    if (mono_field_get_value && obj && field) {
+      mono_field_get_value(obj, field, value);
+    }
+  }
+
+  void SetFieldValue(MonoObject* obj, MonoField* field, void* value)
+  {
+    if (mono_field_set_value && obj && field) {
+      mono_field_set_value(obj, field, value);
+    }
+  }
 }  // namespace Mono
