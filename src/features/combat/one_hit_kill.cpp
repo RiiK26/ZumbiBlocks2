@@ -24,9 +24,10 @@ namespace Features
           static Mono::MonoField* meleeDudDmgField    = nullptr;
 
           if (!meleeGlobalDmgField) {
-            meleeInstField      = Mono::GetFieldFromName("", "MeleeAttackBase", "Instance");
-            meleeGlobalDmgField = Mono::GetFieldFromName("", "MeleeAttackBase", "<GlobalDamageMultiplier>k__BackingField");
-            meleeDudDmgField    = Mono::GetFieldFromName("", "MeleeAttackBase", "<DudDamageMultiplier>k__BackingField");
+            meleeInstField = Mono::GetFieldFromName("", "MeleeAttackBase", "Instance");
+            meleeGlobalDmgField =
+              Mono::GetFieldFromName("", "MeleeAttackBase", "<GlobalDamageMultiplier>k__BackingField");
+            meleeDudDmgField = Mono::GetFieldFromName("", "MeleeAttackBase", "<DudDamageMultiplier>k__BackingField");
           }
 
           void* meleeInstance = nullptr;
@@ -49,7 +50,7 @@ namespace Features
         return;
       }
 
-      s_meleeRestored = false;
+      s_meleeRestored                             = false;
 
       // 1. Boost Melee & Bare Fist (unarmed punches, kicks, butts) damage multiplier to 99999
       static Mono::MonoField* meleeInstField      = nullptr;

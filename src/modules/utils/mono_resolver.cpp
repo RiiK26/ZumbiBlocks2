@@ -569,8 +569,8 @@ namespace Mono
     if (!pcClass) {
       pcClass = GetClassFromName("", "PlayersController");
       if (pcClass) {
-        pcInstanceField  = GetFieldFromName("", "PlayersController", "instance");
-        mMyPlayer        = mono_class_get_method_from_name ? mono_class_get_method_from_name(pcClass, "MyPlayer", 0) : nullptr;
+        pcInstanceField = GetFieldFromName("", "PlayersController", "instance");
+        mMyPlayer = mono_class_get_method_from_name ? mono_class_get_method_from_name(pcClass, "MyPlayer", 0) : nullptr;
         playersListField = GetFieldFromName("", "PlayersController", "players");
       }
     }

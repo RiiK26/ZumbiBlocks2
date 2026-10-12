@@ -30,7 +30,7 @@ namespace Mono
   extern void EnsureThreadAttached();
   extern void* FindObjectOfType(const char* name_space, const char* class_name);
   extern void* GetLocalPlayer();
-  extern bool  IsInGame();
+  extern bool IsInGame();
 
   // Raw Mono API exports
   extern void* (*mono_runtime_invoke)(MonoMethod* method, void* obj, void** params, MonoObject** exc);

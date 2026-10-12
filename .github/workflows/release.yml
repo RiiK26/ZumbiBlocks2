@@ -4,9 +4,78 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.0.0)'
+        required: false
+        default: ''
 
 jobs:
   release:
+    name: Build & Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine release tag
+        id: vars
+        run: |
+          if [ -n "${{ inputs.tag_name }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-mingw-w64-x86-64 \
+            g++-mingw-w64-x86-64 \
+            cmake \
+            make \
+            zip
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix || true
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix || true
+
+      - name: Build Release Mod
+        run: |
+          chmod +x ./resources/scripts/build
+          ./resources/scripts/build --release
+
+      - name: Prepare Release Package
+        run: |
+          TAG="${{ steps.vars.outputs.tag }}"
+          PKG_NAME="ZumbiBlocks2-${TAG}"
+
+          mkdir -p "$PKG_NAME"
+          cp build/release/ZumbiBlocks2.dll "$PKG_NAME/"
+          cp resources/scripts/run.sh "$PKG_NAME/"
+          chmod +x "$PKG_NAME/run.sh"
+          [ -f README.md ] && cp README.md "$PKG_NAME/"
+          [ -f license ] && cp license "$PKG_NAME/"
+
+          # Archive release directory
+          zip -r "${PKG_NAME}.zip" "$PKG_NAME"
+
+          # Generate SHA256 checksums
+          (cd build/release && sha256sum ZumbiBlocks2.dll) > ZumbiBlocks2.dll.sha256
+          sha256sum "${PKG_NAME}.zip" > "${PKG_NAME}.zip.sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          files: |
+            build/release/ZumbiBlocks2.dll
+            ZumbiBlocks2-${{ steps.vars.outputs.tag }}.zip
+            ZumbiBlocks2.dll.sha256
+            ZumbiBlocks2-${{ steps.vars.outputs.tag }}.zip.sha256
+          generate_release_notes: true
+

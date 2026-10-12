@@ -10,10 +10,7 @@ namespace Features
   {
     static std::string s_unlockStatus = "";
 
-    const char* GetUnlockStatus()
-    {
-      return s_unlockStatus.c_str();
-    }
+    const char* GetUnlockStatus() { return s_unlockStatus.c_str(); }
 
     bool UnlockAllLoadouts()
     {
@@ -116,10 +113,10 @@ namespace Features
 
       // 4. Save progress file immediately to disk so unlocks persist
       static Mono::MonoField*  persistenceInstanceField = nullptr;
-      static Mono::MonoMethod* saveFileMethod            = nullptr;
+      static Mono::MonoMethod* saveFileMethod           = nullptr;
       if (!saveFileMethod) {
         persistenceInstanceField = Mono::GetFieldFromName("", "PersistenceController", "instance");
-        saveFileMethod            = Mono::GetMethodFromName("", "PersistenceController", "SaveFile", 1);
+        saveFileMethod           = Mono::GetMethodFromName("", "PersistenceController", "SaveFile", 1);
       }
 
       void* persistenceInstance = nullptr;

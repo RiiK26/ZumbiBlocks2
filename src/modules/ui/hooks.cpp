@@ -136,8 +136,7 @@ namespace UI
       if (io.WantCaptureKeyboard && IsKeyboardMessage(uMsg))
         return 1;
     }
-    return oWndProc ? CallWindowProc(oWndProc, hWnd, uMsg, wParam, lParam)
-                    : DefWindowProc(hWnd, uMsg, wParam, lParam);
+    return oWndProc ? CallWindowProc(oWndProc, hWnd, uMsg, wParam, lParam) : DefWindowProc(hWnd, uMsg, wParam, lParam);
   }
 
   // Hook Implementations
