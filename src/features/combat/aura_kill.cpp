@@ -2,7 +2,7 @@
 #include "../../modules/ui/config.hpp"
 #include "../../modules/utils/mono_resolver.hpp"
 
-#include <cmath>
+#include <cmath>  // IWYU pragma: keep
 #include <vector>
 #include <windows.h>
 
@@ -76,13 +76,10 @@ namespace Features
       Vector3 playerPos = {0.0f, 0.0f, 0.0f};
       Mono::GetFieldValue((Mono::MonoObject*) playerEntityLocObj, g_EntityPos3DField, &playerPos);
 
-      // Locate ZombieLoader instance via multiple layers
+      // Locate ZombieLoader instance via static Instance field
       void* loaderInstance = nullptr;
       if (g_ZombieLoaderInstance) {
         Mono::GetStaticFieldValue(g_ZombieLoaderInstance, &loaderInstance);
-      }
-      if (!loaderInstance) {
-        loaderInstance = Mono::FindObjectOfType("", "ZombieLoader");
       }
       if (!loaderInstance)
         return;

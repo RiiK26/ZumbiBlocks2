@@ -43,6 +43,7 @@ namespace Mono
   typedef void(__cdecl* mono_field_static_set_value_t)(MonoVTable* vt, MonoField* field, void* value);
   typedef MonoClass*(__cdecl* mono_field_get_parent_t)(MonoField* field);
   typedef MonoVTable*(__cdecl* mono_class_vtable_t)(MonoDomain* domain, MonoClass* klass);
+  typedef void(__cdecl* mono_runtime_class_init_t)(MonoVTable* vt);
   typedef char*(__cdecl* mono_string_to_utf8_t)(MonoString* string_obj);
   typedef MonoString*(__cdecl* mono_string_new_t)(MonoDomain* domain, const char* text);
   typedef void*(__cdecl* mono_compile_method_t)(MonoMethod* method);
@@ -77,6 +78,7 @@ namespace Mono
   mono_field_static_set_value_t     mono_field_static_set_value     = nullptr;
   mono_field_get_parent_t           mono_field_get_parent           = nullptr;
   mono_class_vtable_t               mono_class_vtable               = nullptr;
+  mono_runtime_class_init_t         mono_runtime_class_init         = nullptr;
   mono_string_to_utf8_t             mono_string_to_utf8             = nullptr;
   mono_string_new_t                 mono_string_new                 = nullptr;
   mono_compile_method_t             mono_compile_method             = nullptr;
@@ -119,6 +121,7 @@ namespace Mono
     mono_field_static_set_value = (mono_field_static_set_value_t) GetProcAddress(hMono, "mono_field_static_set_value");
     mono_field_get_parent       = (mono_field_get_parent_t) GetProcAddress(hMono, "mono_field_get_parent");
     mono_class_vtable           = (mono_class_vtable_t) GetProcAddress(hMono, "mono_class_vtable");
+    mono_runtime_class_init     = (mono_runtime_class_init_t) GetProcAddress(hMono, "mono_runtime_class_init");
     mono_string_to_utf8         = (mono_string_to_utf8_t) GetProcAddress(hMono, "mono_string_to_utf8");
     mono_string_new             = (mono_string_new_t) GetProcAddress(hMono, "mono_string_new");
     mono_compile_method         = (mono_compile_method_t) GetProcAddress(hMono, "mono_compile_method");
@@ -371,7 +374,53 @@ namespace Mono
     if (!vt)
       return;
 
+    if (mono_runtime_class_init)
+      mono_runtime_class_init(vt);
+
     mono_field_static_get_value(vt, field, value);
+  }
+
+  void SetStaticFieldValue(MonoField* field, void* value)
+  {
+    if (!mono_field_static_set_value || !field || !value)
+      return;
+
+    EnsureThreadAttached();
+
+    MonoDomain* domain = GetActiveDomain();
+    if (!domain)
+      return;
+
+    MonoClass* klass = mono_field_get_parent ? mono_field_get_parent(field) : nullptr;
+    if (!klass)
+      return;
+
+    MonoVTable* vt = mono_class_vtable ? mono_class_vtable(domain, klass) : nullptr;
+    if (!vt)
+      return;
+
+    if (mono_runtime_class_init)
+      mono_runtime_class_init(vt);
+
+    mono_field_static_set_value(vt, field, value);
+  }
+
+  MonoMethod*
+  GetMethodFromName(const char* name_space, const char* class_name, const char* method_name, int param_count)
+  {
+    MonoClass* klass = GetClassFromName(name_space, class_name);
+    if (!klass || !mono_class_get_method_from_name)
+      return nullptr;
+    return mono_class_get_method_from_name(klass, method_name, param_count);
+  }
+
+  void* RuntimeInvoke(MonoMethod* method, void* obj, void** params, MonoObject** exc)
+  {
+    if (!mono_runtime_invoke || !method)
+      return nullptr;
+    EnsureThreadAttached();
+    MonoObject* localExc = nullptr;
+    return mono_runtime_invoke(method, obj, params, exc ? exc : &localExc);
   }
 
   static void ResolveListFields(MonoClass* klass, MonoField*& outItems, MonoField*& outSize)
@@ -479,71 +528,92 @@ namespace Mono
     return size;
   }
 
+  bool IsInGame()
+  {
+    EnsureThreadAttached();
+
+    static MonoField* matchCtrlInstanceField = nullptr;
+    static MonoField* matchStateField        = nullptr;
+    if (!matchStateField) {
+      matchCtrlInstanceField = GetFieldFromName("", "MatchController", "instance");
+      matchStateField        = GetFieldFromName("", "MatchController", "state");
+    }
+
+    if (!matchCtrlInstanceField || !matchStateField)
+      return false;
+
+    void* matchCtrl = nullptr;
+    GetStaticFieldValue(matchCtrlInstanceField, &matchCtrl);
+    if (!matchCtrl)
+      return false;
+
+    int state = 0;
+    GetFieldValue((MonoObject*) matchCtrl, matchStateField, &state);
+    // MatchState: Off = 0, Lobby = 1, GeneratingMap = 2, InGame = 3, GameOver = 4
+    return state == 3;
+  }
+
   void* GetLocalPlayer()
   {
     EnsureThreadAttached();
 
-    // 1. Try static method PlayersController.RandomPlayer()
-    static MonoClass*  pcClass     = nullptr;
-    static MonoMethod* mRandom     = nullptr;
-    static bool        triedRandom = false;
-    if (!triedRandom) {
-      triedRandom = true;
-      pcClass     = GetClassFromName("", "PlayersController");
-      if (pcClass && mono_class_get_method_from_name) {
-        mRandom = mono_class_get_method_from_name(pcClass, "RandomPlayer", 0);
+    // Only look for in-game local player if the match has actually started!
+    if (!IsInGame())
+      return nullptr;
+
+    // 1. Try PlayersController.instance.MyPlayer()
+    static MonoClass*  pcClass          = nullptr;
+    static MonoField*  pcInstanceField  = nullptr;
+    static MonoMethod* mMyPlayer        = nullptr;
+    static MonoField*  playersListField = nullptr;
+    if (!pcClass) {
+      pcClass = GetClassFromName("", "PlayersController");
+      if (pcClass) {
+        pcInstanceField  = GetFieldFromName("", "PlayersController", "instance");
+        mMyPlayer        = mono_class_get_method_from_name ? mono_class_get_method_from_name(pcClass, "MyPlayer", 0) : nullptr;
+        playersListField = GetFieldFromName("", "PlayersController", "players");
       }
     }
-    if (mRandom && mono_runtime_invoke) {
+
+    void* pcInst = nullptr;
+    if (pcInstanceField) {
+      GetStaticFieldValue(pcInstanceField, &pcInst);
+    }
+
+    if (pcInst && mMyPlayer) {
       MonoObject* exc = nullptr;
-      MonoObject* p   = (MonoObject*) mono_runtime_invoke(mRandom, nullptr, nullptr, &exc);
+      void*       p   = RuntimeInvoke(mMyPlayer, pcInst, nullptr, &exc);
       if (!exc && p) {
-        static bool loggedPlayer = false;
-        if (!loggedPlayer) {
-          Logger::Log("[Mono] GetLocalPlayer: resolved player via PlayersController.RandomPlayer(): %p", p);
-          loggedPlayer = true;
-        }
         return p;
       }
     }
 
     // 2. Try PlayersController.instance.players[0]
-    static MonoField* playersCtrlInstanceField = nullptr;
-    static MonoField* playersListField         = nullptr;
-    if (!playersCtrlInstanceField) {
-      playersCtrlInstanceField = GetFieldFromName("", "PlayersController", "instance");
-      playersListField         = GetFieldFromName("", "PlayersController", "players");
-    }
-    if (playersCtrlInstanceField && playersListField) {
-      void* playersCtrl = nullptr;
-      GetStaticFieldValue(playersCtrlInstanceField, &playersCtrl);
-      if (playersCtrl) {
-        void* playersList = nullptr;
-        GetFieldValue((MonoObject*) playersCtrl, playersListField, &playersList);
-        if (playersList) {
-          void* p = GetListItem(playersList, 0);
-          if (p) {
-            static bool loggedPlayer = false;
-            if (!loggedPlayer) {
-              Logger::Log("[Mono] GetLocalPlayer: resolved player via players list: %p", p);
-              loggedPlayer = true;
-            }
-            return p;
-          }
+    if (pcInst && playersListField) {
+      void* playersList = nullptr;
+      GetFieldValue((MonoObject*) pcInst, playersListField, &playersList);
+      if (playersList) {
+        void* p = GetListItem(playersList, 0);
+        if (p) {
+          return p;
         }
       }
     }
 
-    // 3. Fallback to Unity Object.FindObjectOfType("PlayerMain")
-    void* p = FindObjectOfType("", "PlayerMain");
-    if (p) {
-      static bool loggedPlayer = false;
-      if (!loggedPlayer) {
-        Logger::Log("[Mono] GetLocalPlayer: resolved player via FindObjectOfType: %p", p);
-        loggedPlayer = true;
+    // 3. Try PlayersController.RandomPlayer()
+    static MonoMethod* mRandom = nullptr;
+    if (pcClass && !mRandom && mono_class_get_method_from_name) {
+      mRandom = mono_class_get_method_from_name(pcClass, "RandomPlayer", 0);
+    }
+    if (mRandom) {
+      MonoObject* exc = nullptr;
+      MonoObject* p   = (MonoObject*) RuntimeInvoke(mRandom, nullptr, nullptr, &exc);
+      if (!exc && p) {
+        return p;
       }
     }
-    return p;
+
+    return nullptr;
   }
 
   typedef MonoMethod*(__cdecl* mono_class_get_methods_t)(MonoClass* klass, void** iter);

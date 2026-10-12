@@ -1,6 +1,5 @@
 #include "hook.hpp"
 
-#include "../../features/anticheat/anticheat.hpp"
 #include "../../features/player/player.hpp"
 #include "../../features/combat/combat.hpp"
 

@@ -25,6 +25,19 @@ namespace UI
           ImGui::BeginChild("PlayerChild", ImVec2(0, -45), 0);
           ImGui::Checkbox("Invincible", &Config.bInvincible);
           ImGui::Checkbox("Infinite Stamina", &Config.bInfiniteStamina);
+
+          ImGui::Spacing();
+          ImGui::Separator();
+          ImGui::Text("Loadout & Customization");
+          ImGui::Checkbox("Auto Unlock Loadouts", &Config.bUnlockAllLoadouts);
+          if (ImGui::Button("Unlock All Loadouts & Skins", ImVec2(-1, 0))) {
+            Features::Player::UnlockAllLoadouts();
+          }
+          const char* unlockStatus = Features::Player::GetUnlockStatus();
+          if (unlockStatus && unlockStatus[0] != '\0') {
+            ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "%s", unlockStatus);
+          }
+
           ImGui::EndChild();
           ImGui::EndTabItem();
         }
@@ -62,6 +75,8 @@ namespace UI
     static int frameCounter = 0;
     frameCounter++;
     if (frameCounter % 5 == 0) {  // Run ~12 times a second for responsive cheats
+      Features::Player::UpdateLoadoutUnlocker();
+
       void* playerInstance = Mono::GetLocalPlayer();
       if (playerInstance) {
         Features::Player::UpdateInvincible(playerInstance);

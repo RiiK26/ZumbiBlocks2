@@ -14,11 +14,72 @@ namespace Features
 
     void UpdateOneHitKill(void* playerInstance)
     {
-      if (!UI::Config.bOneHitKill || !playerInstance)
-        return;
+      static bool s_meleeRestored = true;
 
-      // 1. Boost equipped gun damage to 99999
-      if (UI::Config.bOneHitKill) {
+      // When One Hit Kill is disabled, restore MeleeAttackBase damage multiplier to default
+      if (!UI::Config.bOneHitKill) {
+        if (!s_meleeRestored) {
+          static Mono::MonoField* meleeInstField      = nullptr;
+          static Mono::MonoField* meleeGlobalDmgField = nullptr;
+          static Mono::MonoField* meleeDudDmgField    = nullptr;
+
+          if (!meleeGlobalDmgField) {
+            meleeInstField      = Mono::GetFieldFromName("", "MeleeAttackBase", "Instance");
+            meleeGlobalDmgField = Mono::GetFieldFromName("", "MeleeAttackBase", "<GlobalDamageMultiplier>k__BackingField");
+            meleeDudDmgField    = Mono::GetFieldFromName("", "MeleeAttackBase", "<DudDamageMultiplier>k__BackingField");
+          }
+
+          void* meleeInstance = nullptr;
+          if (meleeInstField) {
+            Mono::GetStaticFieldValue(meleeInstField, &meleeInstance);
+          }
+
+          if (meleeInstance) {
+            if (meleeGlobalDmgField) {
+              float normalDmg = 1.0f;
+              Mono::SetFieldValue((Mono::MonoObject*) meleeInstance, meleeGlobalDmgField, &normalDmg);
+            }
+            if (meleeDudDmgField) {
+              float normalDud = 0.5f;
+              Mono::SetFieldValue((Mono::MonoObject*) meleeInstance, meleeDudDmgField, &normalDud);
+            }
+          }
+          s_meleeRestored = true;
+        }
+        return;
+      }
+
+      s_meleeRestored = false;
+
+      // 1. Boost Melee & Bare Fist (unarmed punches, kicks, butts) damage multiplier to 99999
+      static Mono::MonoField* meleeInstField      = nullptr;
+      static Mono::MonoField* meleeGlobalDmgField = nullptr;
+      static Mono::MonoField* meleeDudDmgField    = nullptr;
+
+      if (!meleeGlobalDmgField) {
+        meleeInstField      = Mono::GetFieldFromName("", "MeleeAttackBase", "Instance");
+        meleeGlobalDmgField = Mono::GetFieldFromName("", "MeleeAttackBase", "<GlobalDamageMultiplier>k__BackingField");
+        meleeDudDmgField    = Mono::GetFieldFromName("", "MeleeAttackBase", "<DudDamageMultiplier>k__BackingField");
+      }
+
+      void* meleeInstance = nullptr;
+      if (meleeInstField) {
+        Mono::GetStaticFieldValue(meleeInstField, &meleeInstance);
+      }
+
+      if (meleeInstance) {
+        if (meleeGlobalDmgField) {
+          float maxMelee = 99999.0f;
+          Mono::SetFieldValue((Mono::MonoObject*) meleeInstance, meleeGlobalDmgField, &maxMelee);
+        }
+        if (meleeDudDmgField) {
+          float maxDud = 1.0f;
+          Mono::SetFieldValue((Mono::MonoObject*) meleeInstance, meleeDudDmgField, &maxDud);
+        }
+      }
+
+      // 2. Boost equipped gun damage to 99999
+      if (playerInstance) {
         static Mono::MonoField* armsField  = nullptr;
         static Mono::MonoField* handsField = nullptr;
         static Mono::MonoField* gunField   = nullptr;
@@ -84,9 +145,6 @@ namespace Features
       void* loaderInstance = nullptr;
       if (zombieLoaderInstField) {
         Mono::GetStaticFieldValue(zombieLoaderInstField, &loaderInstance);
-      }
-      if (!loaderInstance) {
-        loaderInstance = Mono::FindObjectOfType("", "ZombieLoader");
       }
       if (!loaderInstance)
         return;

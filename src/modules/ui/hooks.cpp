@@ -116,7 +116,7 @@ namespace UI
 
   LRESULT __stdcall WndProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   {
-    if (!init && !initDX12) {
+    if ((!init && !initDX12) || ImGui::GetCurrentContext() == nullptr) {
       return oWndProc ? CallWindowProc(oWndProc, hWnd, uMsg, wParam, lParam)
                       : DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
@@ -136,7 +136,8 @@ namespace UI
       if (io.WantCaptureKeyboard && IsKeyboardMessage(uMsg))
         return 1;
     }
-    return CallWindowProc(oWndProc, hWnd, uMsg, wParam, lParam);
+    return oWndProc ? CallWindowProc(oWndProc, hWnd, uMsg, wParam, lParam)
+                    : DefWindowProc(hWnd, uMsg, wParam, lParam);
   }
 
   // Hook Implementations
@@ -396,11 +397,18 @@ namespace UI
 
   void RenderFrame(IDXGISwapChain* pSwapChain)
   {
-    if (currentSwapChain != pSwapChain) {
-      if (init || initDX12) {
-        Logger::Log("[DX] SwapChain changed. Shutting down ImGui to re-initialize.");
+    if (init || initDX12) {
+      if (currentSwapChain != pSwapChain) {
+        // If ImGui is already initialized on a valid, living window, do not thrash between swapchains!
+        if (window && IsWindow(window)) {
+          return;
+        }
+        Logger::Log("[DX] Main window was closed/invalid. Re-initializing ImGui for new swapchain.");
         ResetImGui();
+        currentSwapChain = pSwapChain;
       }
+    }
+    else {
       currentSwapChain = pSwapChain;
     }
 
@@ -549,11 +557,13 @@ namespace UI
       }
 
       IDXGISwapChain1* pSwapChain1 = nullptr;
-      if (SUCCEEDED(pDummySwapChain->QueryInterface(__uuidof(IDXGISwapChain1), (void**) &pSwapChain1))) {
+      if (SUCCEEDED(pDummySwapChain->QueryInterface(__uuidof(IDXGISwapChain1), (void**) &pSwapChain1)) && pSwapChain1) {
         void** pVTable1  = *reinterpret_cast<void***>(pSwapChain1);
         void*  pPresent1 = pVTable1[22];
-        if (MH_CreateHook(pPresent1, (void*) hkPresent1, (void**) &oPresent1) == MH_OK)
+        if (MH_CreateHook(pPresent1, (void*) hkPresent1, (void**) &oPresent1) == MH_OK) {
           MH_EnableHook(pPresent1);
+          Logger::Log("[DX] Successfully hooked Present1.");
+        }
         pSwapChain1->Release();
       }
 
@@ -599,6 +609,7 @@ namespace UI
 
     DestroyWindow(dummyWindow);
     UnregisterClassA("DummyClass", wc.hInstance);
+    Logger::Log("[DX] UI::Initialize completed successfully.");
   }
 
   void ResetImGui()

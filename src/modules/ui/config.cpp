@@ -61,6 +61,8 @@ namespace UI
             iCrosshairType = std::stoi(value);
           else if (key == "aura_kill")
             bAuraKill = (value == "1");
+          else if (key == "unlock_all_loadouts")
+            bUnlockAllLoadouts = (value == "1");
         }
       }
     }
@@ -80,5 +82,6 @@ namespace UI
     out << "enable_crosshair=" << (bEnableCrosshair ? "1" : "0") << "\n";
     out << "crosshair_type=" << iCrosshairType << "\n";
     out << "aura_kill=" << (bAuraKill ? "1" : "0") << "\n";
+    out << "unlock_all_loadouts=" << (bUnlockAllLoadouts ? "1" : "0") << "\n";
   }
 }  // namespace UI

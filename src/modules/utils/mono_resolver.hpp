@@ -30,6 +30,7 @@ namespace Mono
   extern void EnsureThreadAttached();
   extern void* FindObjectOfType(const char* name_space, const char* class_name);
   extern void* GetLocalPlayer();
+  extern bool  IsInGame();
 
   // Raw Mono API exports
   extern void* (*mono_runtime_invoke)(MonoMethod* method, void* obj, void** params, MonoObject** exc);
@@ -39,11 +40,15 @@ namespace Mono
   extern MonoMethod* (*mono_class_get_method_from_name)(MonoClass* klass, const char* name, int param_count);
   extern void* (*mono_type_get_object)(MonoDomain* domain, MonoType* type);
 
-  // Field Helpers
+  // Method & Field Helpers
+  extern MonoMethod*
+  GetMethodFromName(const char* name_space, const char* class_name, const char* method_name, int param_count);
+  extern void* RuntimeInvoke(MonoMethod* method, void* obj, void** params = nullptr, MonoObject** exc = nullptr);
   extern MonoField* GetFieldFromName(const char* name_space, const char* class_name, const char* field_name);
   extern void GetFieldValue(MonoObject* obj, MonoField* field, void* value);
   extern void SetFieldValue(MonoObject* obj, MonoField* field, void* value);
   extern void GetStaticFieldValue(MonoField* field, void* value);
+  extern void SetStaticFieldValue(MonoField* field, void* value);
 
   // List Helpers
   extern bool GetListElements(void* listObj, std::vector<void*>& outElements);

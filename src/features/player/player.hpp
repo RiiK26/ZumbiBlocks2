@@ -9,5 +9,10 @@ namespace Features
     void InitializeStamina();
 
     void UninitializeInvicible();
+
+    // Loadout & Appearance Unlocker
+    bool UnlockAllLoadouts();
+    void UpdateLoadoutUnlocker();
+    const char* GetUnlockStatus();
   }  // namespace Player
 }  // namespace Features
