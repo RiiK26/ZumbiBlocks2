@@ -5,4 +5,5 @@ namespace Logger
 {
   void Initialize();
   void Log(const char* format, ...);
+  void LogCrash(const char* format, ...);
 }  // namespace Logger

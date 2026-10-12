@@ -19,6 +19,7 @@ void Hooks::Initialize()
   Features::Player::InitializeStamina();
   Features::Combat::Initialize();
   Features::Combat::InitializeAmmo();
+  Features::Combat::InitializeAuraKill();
 }
 
 void Hooks::Uninitialize()

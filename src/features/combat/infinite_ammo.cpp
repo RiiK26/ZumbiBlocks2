@@ -1,62 +1,120 @@
 #include "combat.hpp"
-#include "../../modules/hooks/hook.hpp"  // IWYU pragma: keep
+#include "../../modules/hooks/hook.hpp"    // IWYU pragma: keep
 #include "../../modules/ui/config.hpp"
-#include "../../modules/utils/logger.hpp"
+#include "../../modules/utils/logger.hpp"  // IWYU pragma: keep
 #include "../../modules/utils/mono_resolver.hpp"
-
-typedef void (*ShootGun_t)(void* instance, void* equippedGunItem);
-ShootGun_t       oShootGun              = nullptr;
-
-Mono::MonoField* inventoryItemAmmoField = nullptr;
-
-void hkShootGun(void* instance, void* equippedGunItem)
-{
-  if (UI::Config.bInfiniteAmmo && equippedGunItem && inventoryItemAmmoField) {
-    int ammo = 0;
-    Mono::GetFieldValue((Mono::MonoObject*) equippedGunItem, inventoryItemAmmoField, &ammo);
-
-    if (oShootGun) {
-      oShootGun(instance, equippedGunItem);
-    }
-
-    // Restore ammo so it's not consumed
-    Mono::SetFieldValue((Mono::MonoObject*) equippedGunItem, inventoryItemAmmoField, &ammo);
-  }
-  else {
-    if (oShootGun) {
-      oShootGun(instance, equippedGunItem);
-    }
-  }
-}
 
 namespace Features
 {
   namespace Combat
   {
-    void InitializeAmmo()
+    void InitializeAmmo() { }
+
+    void UpdateAmmo(void* playerInstance)
     {
-      Logger::Log("[Combat] Initializing Infinite Ammo...");
+      if (!UI::Config.bInfiniteAmmo || !playerInstance)
+        return;
 
-      void* targetShootGun = Mono::CompileMethod("", "PlayerArms", "ShootGun", 1);
-      if (targetShootGun) {
-        if (MH_CreateHook(targetShootGun, (void*) hkShootGun, (void**) &oShootGun) == MH_OK) {
-          MH_EnableHook(targetShootGun);
-          Logger::Log("[Combat] Successfully hooked PlayerArms::ShootGun!");
-        }
-        else {
-          Logger::Log("[Combat] Failed to hook PlayerArms::ShootGun!");
-        }
-      }
-      else {
-        Logger::Log("[Combat] Failed to compile PlayerArms::ShootGun!");
+      // 1. Set ammoConsumption = 0 on equipped gun so firing uses 0 ammo
+      static Mono::MonoField* armsField     = nullptr;
+      static Mono::MonoField* handsField    = nullptr;
+      static Mono::MonoField* gunField      = nullptr;
+      static Mono::MonoField* dbGunField    = nullptr;
+      static Mono::MonoField* ammoConsField = nullptr;
+
+      if (!armsField) {
+        armsField     = Mono::GetFieldFromName("", "PlayerMain", "arms");
+        handsField    = Mono::GetFieldFromName("", "PlayerArms", "hands");
+        gunField      = Mono::GetFieldFromName("", "PlayerHandItems", "<Gun>k__BackingField");
+        dbGunField    = Mono::GetFieldFromName("", "PhysicalGun", "<DbReference>k__BackingField");
+        ammoConsField = Mono::GetFieldFromName("", "DatabaseGun", "ammoConsumption");
       }
 
-      inventoryItemAmmoField = Mono::GetFieldFromName("", "InventoryItem", "ammo");
-      if (inventoryItemAmmoField) {
-        Logger::Log("[Combat] Successfully resolved InventoryItem::ammo field!");
+      if (armsField && handsField && gunField && dbGunField && ammoConsField) {
+        void* armsObj = nullptr;
+        Mono::GetFieldValue((Mono::MonoObject*) playerInstance, armsField, &armsObj);
+        if (armsObj) {
+          void* handsObj = nullptr;
+          Mono::GetFieldValue((Mono::MonoObject*) armsObj, handsField, &handsObj);
+          if (handsObj) {
+            void* gunObj = nullptr;
+            Mono::GetFieldValue((Mono::MonoObject*) handsObj, gunField, &gunObj);
+            if (gunObj) {
+              void* dbGunObj = nullptr;
+              Mono::GetFieldValue((Mono::MonoObject*) gunObj, dbGunField, &dbGunObj);
+              if (dbGunObj) {
+                int zeroConsumption = 0;
+                Mono::SetFieldValue((Mono::MonoObject*) dbGunObj, ammoConsField, &zeroConsumption);
+              }
+            }
+          }
+        }
       }
-      else {
-        Logger::Log("[Combat] Failed to resolve InventoryItem::ammo field!");
+
+      // 2. Refill equipped weapons magazine to 999
+      static Mono::MonoField* invField          = nullptr;
+      static Mono::MonoField* eqField           = nullptr;
+      static Mono::MonoField* wepField          = nullptr;
+      static Mono::MonoField* ammoField         = nullptr;
+      static Mono::MonoField* stackField        = nullptr;
+      static Mono::MonoField* storageField      = nullptr;
+      static Mono::MonoField* storageItemsField = nullptr;
+
+      if (!invField) {
+        invField          = Mono::GetFieldFromName("", "PlayerMain", "inventory");
+        eqField           = Mono::GetFieldFromName("", "PlayerInventory", "equippedItems");
+        wepField          = Mono::GetFieldFromName("", "PlayerEquippedItems", "weapons");
+        ammoField         = Mono::GetFieldFromName("", "InventoryItem", "ammo");
+        stackField        = Mono::GetFieldFromName("", "InventoryItem", "stackCount");
+        storageField      = Mono::GetFieldFromName("", "PlayerInventory", "storage");
+        storageItemsField = Mono::GetFieldFromName("", "ItemContainer", "items");
+      }
+
+      if (!invField || !eqField || !wepField || !ammoField)
+        return;
+
+      void* invObj = nullptr;
+      Mono::GetFieldValue((Mono::MonoObject*) playerInstance, invField, &invObj);
+      if (!invObj)
+        return;
+
+      void* eqObj = nullptr;
+      Mono::GetFieldValue((Mono::MonoObject*) invObj, eqField, &eqObj);
+      if (eqObj) {
+        void* wepList = nullptr;
+        Mono::GetFieldValue((Mono::MonoObject*) eqObj, wepField, &wepList);
+        if (wepList) {
+          std::vector<void*> weaponItems;
+          if (Mono::GetListElements(wepList, weaponItems)) {
+            int maxAmmo = 999;
+            for (void* item : weaponItems) {
+              if (item) {
+                Mono::SetFieldValue((Mono::MonoObject*) item, ammoField, &maxAmmo);
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Refill backpack/storage reserve stacks to 999
+      if (storageField && storageItemsField && stackField) {
+        void* storageObj = nullptr;
+        Mono::GetFieldValue((Mono::MonoObject*) invObj, storageField, &storageObj);
+        if (storageObj) {
+          void* storageItemsList = nullptr;
+          Mono::GetFieldValue((Mono::MonoObject*) storageObj, storageItemsField, &storageItemsList);
+          if (storageItemsList) {
+            std::vector<void*> storageItems;
+            if (Mono::GetListElements(storageItemsList, storageItems)) {
+              int maxStack = 999;
+              for (void* item : storageItems) {
+                if (item) {
+                  Mono::SetFieldValue((Mono::MonoObject*) item, stackField, &maxStack);
+                }
+              }
+            }
+          }
+        }
       }
     }
   }  // namespace Combat

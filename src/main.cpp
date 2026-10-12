@@ -1,11 +1,38 @@
 #include <windows.h>
+#include <signal.h>
 #include "modules/utils/mono_resolver.hpp"
 #include "modules/ui/hooks.hpp"
 #include "modules/hooks/hook.hpp"
 #include "modules/utils/logger.hpp"
 
+LONG WINAPI CrashHandler(PEXCEPTION_POINTERS ExceptionInfo)
+{
+  if (!ExceptionInfo || !ExceptionInfo->ExceptionRecord) {
+    Logger::LogCrash("[CRASH] Exception caught (no record)");
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+
+  DWORD code = ExceptionInfo->ExceptionRecord->ExceptionCode;
+  PVOID addr = ExceptionInfo->ExceptionRecord->ExceptionAddress;
+
+  // Ignore non-fatal exceptions (like thread naming or breakpoints or Mono SEH)
+  if (code != EXCEPTION_BREAKPOINT && code != 0x406D1388 && code != 0xE0000001 && code != 0x40010006) {
+    Logger::LogCrash("[CRASH] Exception caught! Code: 0x%08X at %p", code, addr);
+  }
+  return EXCEPTION_CONTINUE_SEARCH;
+}
+
+void SignalCrashHandler(int signum) { Logger::LogCrash("[CRASH] Signal caught! Signal: %d", signum); }
+
 DWORD WINAPI MainThread(LPVOID lpReserved)
 {
+  AddVectoredExceptionHandler(1, CrashHandler);
+  SetUnhandledExceptionFilter(CrashHandler);
+  signal(SIGSEGV, SignalCrashHandler);
+  signal(SIGABRT, SignalCrashHandler);
+  signal(SIGFPE, SignalCrashHandler);
+  signal(SIGILL, SignalCrashHandler);
+
   Logger::Initialize();
   Logger::Log("[MainThread] Started. Waiting for mono-2.0-bdwgc.dll...");
 

@@ -10,8 +10,9 @@ namespace UI
     bool bInfiniteStamina = false;
     bool bOneHitKill      = false;
     bool bInfiniteAmmo    = false;
-    bool bCrosshair       = false;
-    bool bDotCrosshair    = false;
+    bool bEnableCrosshair = false;
+    int  iCrosshairType   = 0;
+    bool bAuraKill        = false;
     // Add specific settings below here
 
     void LoadConfig();

@@ -55,10 +55,12 @@ namespace UI
             bOneHitKill = (value == "1");
           else if (key == "infinite_ammo")
             bInfiniteAmmo = (value == "1");
-          else if (key == "crosshair")
-            bCrosshair = (value == "1");
-          else if (key == "dot_crosshair")
-            bDotCrosshair = (value == "1");
+          else if (key == "enable_crosshair")
+            bEnableCrosshair = (value == "1");
+          else if (key == "crosshair_type")
+            iCrosshairType = std::stoi(value);
+          else if (key == "aura_kill")
+            bAuraKill = (value == "1");
         }
       }
     }
@@ -75,7 +77,8 @@ namespace UI
     out << "infinite_stamina=" << (bInfiniteStamina ? "1" : "0") << "\n";
     out << "one_hit_kill=" << (bOneHitKill ? "1" : "0") << "\n";
     out << "infinite_ammo=" << (bInfiniteAmmo ? "1" : "0") << "\n";
-    out << "crosshair=" << (bCrosshair ? "1" : "0") << "\n";
-    out << "dot_crosshair=" << (bDotCrosshair ? "1" : "0") << "\n";
+    out << "enable_crosshair=" << (bEnableCrosshair ? "1" : "0") << "\n";
+    out << "crosshair_type=" << iCrosshairType << "\n";
+    out << "aura_kill=" << (bAuraKill ? "1" : "0") << "\n";
   }
 }  // namespace UI

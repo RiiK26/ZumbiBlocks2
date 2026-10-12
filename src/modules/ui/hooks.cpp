@@ -116,8 +116,15 @@ namespace UI
 
   LRESULT __stdcall WndProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   {
+    if (!init && !initDX12) {
+      return oWndProc ? CallWindowProc(oWndProc, hWnd, uMsg, wParam, lParam)
+                      : DefWindowProc(hWnd, uMsg, wParam, lParam);
+    }
+
     if (uMsg == WM_KEYDOWN && wParam == VK_INSERT) {
-      Config.bMenuOpen = !Config.bMenuOpen;
+      if ((lParam & (1 << 30)) == 0) {
+        Config.bMenuOpen = !Config.bMenuOpen;
+      }
       return 1;
     }
 

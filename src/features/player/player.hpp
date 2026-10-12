@@ -5,6 +5,7 @@ namespace Features
   namespace Player
   {
     void InitializeInvicible();
+    void UpdateInvincible(void* playerInstance);
     void InitializeStamina();
 
     void UninitializeInvicible();

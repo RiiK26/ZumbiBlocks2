@@ -1,6 +1,9 @@
 #include "menu.hpp"
 #include "config.hpp"
 #include <imgui.h>
+#include "../../features/player/player.hpp"
+#include "../../features/combat/combat.hpp"
+#include "../utils/mono_resolver.hpp"
 
 #ifndef PROJECT_VERSION
   #define PROJECT_VERSION "UNKNOWN"
@@ -11,7 +14,7 @@ namespace UI
   void DrawMenuUI()
   {
     if (Config.bMenuOpen) {
-      ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+      ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
       ImGui::Begin(
         "ZumbiBlocks2 v" PROJECT_VERSION, nullptr,
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
@@ -27,22 +30,19 @@ namespace UI
         }
         if (ImGui::BeginTabItem("Combat")) {
           ImGui::BeginChild("CombatChild", ImVec2(0, -45), 0);
-          if (ImGui::Checkbox("One Hit Kill", &Config.bOneHitKill)) {
-            Config.SaveConfig();
-          }
-          if (ImGui::Checkbox("Infinite Ammo", &Config.bInfiniteAmmo)) {
-            Config.SaveConfig();
-          }
+          ImGui::Checkbox("One Hit Kill", &Config.bOneHitKill);
+          ImGui::Checkbox("Infinite Ammo", &Config.bInfiniteAmmo);
+          ImGui::Checkbox("Aura Kill", &Config.bAuraKill);
           ImGui::EndChild();
           ImGui::EndTabItem();
         }
 
         if (ImGui::BeginTabItem("Visuals")) {
           ImGui::BeginChild("VisualsChild", ImVec2(0, -45), 0);
-          if (ImGui::Checkbox("Crosshair", &Config.bCrosshair))
-            Config.SaveConfig();
-          if (ImGui::Checkbox("Dot Crosshair", &Config.bDotCrosshair))
-            Config.SaveConfig();
+          ImGui::Checkbox("Enable Crosshair", &Config.bEnableCrosshair);
+
+          const char* crosshairTypes[] = {"Crosshair", "Dot Crosshair"};
+          ImGui::Combo("Crosshair Type", &Config.iCrosshairType, crosshairTypes, IM_ARRAYSIZE(crosshairTypes));
           ImGui::EndChild();
           ImGui::EndTabItem();
         }
@@ -54,21 +54,44 @@ namespace UI
       if (ImGui::Button("Save Config", ImVec2(-1, 0))) {
         Config.SaveConfig();
       }
+      ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "%s", "[INSERT] show/hide menu");
       ImGui::End();
     }
 
+    // Call game logic updates safely on DX thread
+    static int frameCounter = 0;
+    frameCounter++;
+    if (frameCounter % 5 == 0) {  // Run ~12 times a second for responsive cheats
+      void* playerInstance = Mono::GetLocalPlayer();
+      if (playerInstance) {
+        Features::Player::UpdateInvincible(playerInstance);
+        Features::Combat::UpdateAuraKill(playerInstance);
+        Features::Combat::UpdateAmmo(playerInstance);
+        Features::Combat::UpdateOneHitKill(playerInstance);
+
+        if (Config.bInfiniteStamina) {
+          Mono::MonoField* g_healthFastField = Mono::GetFieldFromName("", "PlayerMain", "staminaFast");
+          Mono::MonoField* g_healthSlowField = Mono::GetFieldFromName("", "PlayerMain", "staminaSlow");
+          float            maxStamina        = 100.0f;  // Assumed max
+          if (g_healthFastField)
+            Mono::SetFieldValue((Mono::MonoObject*) playerInstance, g_healthFastField, &maxStamina);
+          if (g_healthSlowField)
+            Mono::SetFieldValue((Mono::MonoObject*) playerInstance, g_healthSlowField, &maxStamina);
+        }
+      }
+    }
+
     // Draw Crosshairs
-    if (Config.bCrosshair || Config.bDotCrosshair) {
+    if (Config.bEnableCrosshair) {
       ImGuiIO&    io = ImGui::GetIO();
       ImVec2      center(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
       ImDrawList* drawList = ImGui::GetBackgroundDrawList();
       ImU32       color    = IM_COL32(0, 255, 0, 255);  // Green color
 
-      if (Config.bDotCrosshair) {
+      if (Config.iCrosshairType == 1) {                 // Dot Crosshair
         drawList->AddCircleFilled(center, 2.0f, color);
       }
-
-      if (Config.bCrosshair) {
+      else if (Config.iCrosshairType == 0) {  // Crosshair
         float size         = 8.0f;
         float gap          = 3.0f;
         float thickness    = 1.5f;
