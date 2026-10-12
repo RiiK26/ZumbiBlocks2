@@ -28,6 +28,18 @@ namespace UI
 
           ImGui::Spacing();
           ImGui::Separator();
+          ImGui::Text("Movement & Physics");
+          ImGui::Checkbox("Movement Speed", &Config.bMovementSpeed);
+          ImGui::SliderFloat("Speed Multiplier", &Config.fMovementSpeedMultiplier, 1.0f, 10.0f, "%.1fx");
+          ImGui::Checkbox("No Clip (Fly)", &Config.bNoClip);
+          ImGui::SliderFloat("No Clip Speed", &Config.fNoClipSpeed, 5.0f, 50.0f, "%.1f m/s");
+          ImGui::TextColored(
+            ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%s", "W/S/A/D: Move | Space: Up | Ctrl/C: Down | Shift: Boost"
+          );
+
+
+          ImGui::Spacing();
+          ImGui::Separator();
           ImGui::Text("Loadout & Customization");
           ImGui::Checkbox("Auto Unlock Loadouts", &Config.bUnlockAllLoadouts);
           if (ImGui::Button("Unlock All Loadouts & Skins", ImVec2(-1, 0))) {
@@ -72,14 +84,20 @@ namespace UI
     }
 
     // Call game logic updates safely on DX thread
+    void* playerInstance = Mono::GetLocalPlayer();
+    if (playerInstance) {
+      // Update NoClip every frame for smooth flight physics
+      Features::Player::UpdateNoClip(playerInstance);
+    }
+
     static int frameCounter = 0;
     frameCounter++;
     if (frameCounter % 5 == 0) {  // Run ~12 times a second for responsive cheats
       Features::Player::UpdateLoadoutUnlocker();
 
-      void* playerInstance = Mono::GetLocalPlayer();
       if (playerInstance) {
         Features::Player::UpdateInvincible(playerInstance);
+        Features::Player::UpdateMovementSpeed(playerInstance);
         Features::Combat::UpdateAuraKill(playerInstance);
         Features::Combat::UpdateAmmo(playerInstance);
         Features::Combat::UpdateOneHitKill(playerInstance);

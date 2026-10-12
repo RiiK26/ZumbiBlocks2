@@ -14,5 +14,15 @@ namespace Features
     bool UnlockAllLoadouts();
     void UpdateLoadoutUnlocker();
     const char* GetUnlockStatus();
+
+    // Movement Speed Editor
+    void InitializeMovementSpeed();
+    void UpdateMovementSpeed(void* playerInstance);
+    void RestoreMovementSpeed(void* playerInstance);
+
+    // No Clip
+    void InitializeNoClip();
+    void UpdateNoClip(void* playerInstance);
+    void RestoreNoClip(void* playerInstance);
   }  // namespace Player
 }  // namespace Features

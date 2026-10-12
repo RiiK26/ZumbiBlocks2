@@ -63,6 +63,14 @@ namespace UI
             bAuraKill = (value == "1");
           else if (key == "unlock_all_loadouts")
             bUnlockAllLoadouts = (value == "1");
+          else if (key == "movement_speed")
+            bMovementSpeed = (value == "1");
+          else if (key == "movement_speed_mult")
+            fMovementSpeedMultiplier = std::stof(value);
+          else if (key == "noclip")
+            bNoClip = (value == "1");
+          else if (key == "noclip_speed")
+            fNoClipSpeed = std::stof(value);
         }
       }
     }
@@ -83,5 +91,9 @@ namespace UI
     out << "crosshair_type=" << iCrosshairType << "\n";
     out << "aura_kill=" << (bAuraKill ? "1" : "0") << "\n";
     out << "unlock_all_loadouts=" << (bUnlockAllLoadouts ? "1" : "0") << "\n";
+    out << "movement_speed=" << (bMovementSpeed ? "1" : "0") << "\n";
+    out << "movement_speed_mult=" << fMovementSpeedMultiplier << "\n";
+    out << "noclip=" << (bNoClip ? "1" : "0") << "\n";
+    out << "noclip_speed=" << fNoClipSpeed << "\n";
   }
 }  // namespace UI

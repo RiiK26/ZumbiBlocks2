@@ -7,6 +7,8 @@ An internal mod and trainer menu for **Zumbi Blocks 2 (Open Alpha)**, built in C
 ### Player
 * **Invincible (God Mode)**: Prevents damage and keeps health topped up, preserving survival against lethal attacks.
 * **Infinite Stamina**: Freezes stamina consumption for unlimited sprinting, leaping, and dodging.
+* **Movement Speed Editor**: Customizable movement speed multiplier (1.0x - 10.0x) that dynamically scales walk, sprint, and swimming speeds.
+* **No Clip (Fly)**: 3D flight mode with colliders and gravity disabled—pass freely through walls, ceilings, gates, and terrain with full camera direction control (`W/S/A/D`, `Space` to ascend, `Ctrl/C` to descend, `Shift` to boost).
 * **Unlock All Loadouts & Skins**: Instantly unlocks all weapons, attachments, character skins, accessories, and perk slots, with persistent saving to disk.
 
 ### Combat

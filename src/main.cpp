@@ -4,6 +4,7 @@
 #include "modules/ui/hooks.hpp"
 #include "modules/hooks/hook.hpp"
 #include "modules/utils/logger.hpp"
+#include "features/player/player.hpp"
 
 LONG WINAPI CrashHandler(PEXCEPTION_POINTERS ExceptionInfo)
 {
@@ -67,6 +68,13 @@ DWORD WINAPI MainThread(LPVOID lpReserved)
   }
 
   Logger::Log("[MainThread] END key pressed, unloading...");
+
+  // Restore game and player state
+  void* playerInstance = Mono::GetLocalPlayer();
+  if (playerInstance) {
+    Features::Player::RestoreMovementSpeed(playerInstance);
+    Features::Player::RestoreNoClip(playerInstance);
+  }
 
   // Unload hooks and UI
   Hooks::Uninitialize();
